@@ -1,0 +1,10 @@
+const res = await fetch('https://www.cs.toronto.edu/~hehner/FMSD/');
+const html = await res.text();
+const idx = html.toLowerCase().indexOf('lecture');
+console.log(html.slice(Math.max(0, idx - 50), idx + 2500));
+console.log('\n--- mp4 ---');
+for (const m of html.matchAll(/[^"'=\s<>]+\.mp4/gi)) console.log(m[0]);
+console.log('\n--- all a tags raw around lectures ---');
+const aTags = [...html.matchAll(/<a[\s\S]*?<\/a>/gi)];
+console.log('a tags', aTags.length);
+for (const a of aTags.slice(0, 80)) console.log(a[0]);
