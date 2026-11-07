@@ -1,0 +1,2 @@
+E:\AI\General\AptoP.Tutor\publish\emcc-props.json
+E:\AI\General\AptoP.Tutor\publish\web.config

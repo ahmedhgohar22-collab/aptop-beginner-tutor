@@ -1,0 +1,60 @@
+name: Deploy Blazor tutor to GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "AptoP.Tutor/**"
+      - ".github/workflows/deploy-blazor-pages.yml"
+      - "scripts/export-blazor-content.mjs"
+      - "src/content/**"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Export course content
+        run: npx --yes tsx scripts/export-blazor-content.mjs
+      - name: Set base href for GitHub Pages
+        shell: pwsh
+        run: |
+          $index = "AptoP.Tutor/wwwroot/index.html"
+          (Get-Content $index -Raw) -replace '<base href="/" />','<base href="/aptop-beginner-tutor/" />' | Set-Content $index -NoNewline
+      - name: Publish Blazor
+        run: dotnet publish AptoP.Tutor -c Release -o publish-blazor
+      - name: Prepare artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType File -Path publish-blazor/wwwroot/.nojekyll -Force | Out-Null
+          Get-ChildItem publish-blazor/wwwroot -Recurse -Include *.br,*.gz | Remove-Item -Force
+          Remove-Item publish-blazor/wwwroot/web.config -Force -ErrorAction SilentlyContinue
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish-blazor/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

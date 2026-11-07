@@ -1,0 +1,27 @@
+@using AptoP.Tutor.Models
+
+@if (Files.Count > 0)
+{
+    <div class="printable-downloads">
+        <p class="video-intro">
+            Compact study handouts from the original lecture text (wording preserved). About half the
+            pages or less, with logic symbols fixed (∧ ∨ ¬ ⇒ ≡ ⊥), cleaned wraps, and a readable study
+            layout in black ink on white.
+        </p>
+        <ul class="printable-list">
+            @foreach (var f in Files)
+            {
+                <li>
+                    <a class="primary link-btn" href="@f.Href" download="@($"{f.Id}-study.pdf")" target="_blank" rel="noreferrer">
+                        Download @f.Title
+                    </a>
+                    <span class="note">@f.Detail</span>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    [Parameter] public List<PrintablePdf> Files { get; set; } = [];
+}

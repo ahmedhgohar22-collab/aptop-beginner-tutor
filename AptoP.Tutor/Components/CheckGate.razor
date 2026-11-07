@@ -1,0 +1,163 @@
+@using AptoP.Tutor.Models
+
+<div class="check-gate">
+    <p class="check-prompt">@Check.Prompt</p>
+
+    @if (Check.Kind == "value-table" && Check.Rows is not null)
+    {
+        <div class="value-table">
+            @for (var i = 0; i < Check.Rows.Count; i++)
+            {
+                var index = i;
+                var row = Check.Rows[i];
+                <div class="value-row">
+                    <code>@row.Expression</code>
+                    <div class="value-toggles">
+                        <button type="button"
+                                class="@SelectedClass(_tableAnswers.GetValueOrDefault(index) == "theorem")"
+                                disabled="@_passed"
+                                @onclick="() => SetTable(index, Theorem)">
+                            ⊤ theorem
+                        </button>
+                        <button type="button"
+                                class="@SelectedClass(_tableAnswers.GetValueOrDefault(index) == "antitheorem")"
+                                disabled="@_passed"
+                                @onclick="() => SetTable(index, Antitheorem)">
+                            ⊥ antitheorem
+                        </button>
+                    </div>
+                </div>
+            }
+            @if (!_passed)
+            {
+                <button type="button" class="primary" @onclick="SubmitTable">Check table</button>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="choices">
+            @if (Check.Kind == "pick-rule" && Check.Expression is not null)
+            {
+                <pre class="expression-block">@Check.Expression</pre>
+            }
+            @if (Check.Kind == "complete-line" && Check.Before is not null)
+            {
+                <pre class="expression-block">@Check.Before</pre>
+            }
+            @if (Check.Kind == "translate" && Check.Source is not null)
+            {
+                <pre class="expression-block">@Check.Source</pre>
+            }
+            @if (Check.Choices is not null)
+            {
+                @for (var i = 0; i < Check.Choices.Count; i++)
+                {
+                    var index = i;
+                    var choice = Check.Choices[i];
+                    <button type="button"
+                            class="@ChoiceClass(index)"
+                            disabled="@_passed"
+                            @onclick="() => SubmitChoice(index)">
+                        @choice
+                    </button>
+                }
+            }
+        </div>
+    }
+
+    @if (_feedback is not null)
+    {
+        <p class="feedback @(_passed ? "ok" : "bad")">@_feedback</p>
+    }
+
+    @if (!_passed)
+    {
+        <button type="button" class="linkish" @onclick="HandleShowMe">Show me</button>
+    }
+    @if (_passed && _showMe)
+    {
+        <p class="review-note">Marked for review because you used Show me.</p>
+    }
+    @if (_passed)
+    {
+        <p class="continue-hint">Unlocked — continue to the next card.</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Check Check { get; set; } = new();
+    [Parameter, EditorRequired] public EventCallback<bool> OnPass { get; set; }
+    [Parameter] public EventCallback OnFailTwice { get; set; }
+
+    private const string Theorem = "theorem";
+    private const string Antitheorem = "antitheorem";
+
+    private int? _selected;
+    private readonly Dictionary<int, string> _tableAnswers = new();
+    private string? _feedback;
+    private bool _passed;
+    private int _fails;
+    private bool _showMe;
+
+    private static string SelectedClass(bool selected) => selected ? "selected" : "";
+
+    private string ChoiceClass(int index)
+    {
+        var classes = "choice";
+        if (_selected == index) classes += _passed ? " correct" : " picked";
+        if (_passed && index == Check.CorrectIndex) classes += " correct";
+        return classes;
+    }
+
+    private void SetTable(int index, string value)
+    {
+        if (_passed) return;
+        _tableAnswers[index] = value;
+    }
+
+    private async Task PassAsync(bool usedShowMe)
+    {
+        _passed = true;
+        _feedback = Check.ExplainCorrect;
+        await OnPass.InvokeAsync(usedShowMe);
+    }
+
+    private async Task FailAsync()
+    {
+        _fails++;
+        _feedback = Check.ExplainWrong;
+        if (_fails >= 2) await OnFailTwice.InvokeAsync();
+    }
+
+    private async Task SubmitChoice(int index)
+    {
+        if (_passed || Check.Kind == "value-table") return;
+        _selected = index;
+        if (index == Check.CorrectIndex) await PassAsync(false);
+        else await FailAsync();
+    }
+
+    private async Task SubmitTable()
+    {
+        if (_passed || Check.Kind != "value-table" || Check.Rows is null) return;
+        var ok = Check.Rows.Select((row, i) => _tableAnswers.GetValueOrDefault(i) == row.Correct).All(x => x);
+        if (ok) await PassAsync(false);
+        else await FailAsync();
+    }
+
+    private async Task HandleShowMe()
+    {
+        _showMe = true;
+        if (Check.Kind == "value-table" && Check.Rows is not null)
+        {
+            for (var i = 0; i < Check.Rows.Count; i++)
+                _tableAnswers[i] = Check.Rows[i].Correct;
+        }
+        else
+        {
+            _selected = Check.CorrectIndex;
+        }
+        await PassAsync(true);
+    }
+}

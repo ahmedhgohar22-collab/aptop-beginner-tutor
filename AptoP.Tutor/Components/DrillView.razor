@@ -1,0 +1,103 @@
+@using AptoP.Tutor.Models
+
+<div class="drill">
+    <p class="drill-prompt">@Drill.Prompt</p>
+
+    @if (Drill.Kind == "multiple-choice" && Drill.Choices is not null)
+    {
+        <div class="choices">
+            @for (var i = 0; i < Drill.Choices.Count; i++)
+            {
+                var index = i;
+                var choice = Drill.Choices[i];
+                <button type="button"
+                        class="choice @(_selected == index ? "picked" : "") @(_done && index == Drill.CorrectIndex ? "correct" : "")"
+                        disabled="@_done"
+                        @onclick="() => Submit(index)">
+                    @choice
+                </button>
+            }
+        </div>
+    }
+
+    @if (Drill.Kind == "proof-with-hints")
+    {
+        <div class="hint-ladder">
+            @if (_hintLevel >= 1 && Drill.Hints is { Count: > 0 })
+            {
+                <p class="hint">Hint 1: @Drill.Hints[0]</p>
+            }
+            @if (_hintLevel >= 2 && Drill.Hints is { Count: > 1 })
+            {
+                <p class="hint">Hint 2: @Drill.Hints[1]</p>
+            }
+            @if (_showSolution && Drill.Solution is not null)
+            {
+                <pre class="solution">@Drill.Solution</pre>
+            }
+            @if (!_showSolution)
+            {
+                <button type="button" class="primary" @onclick="RevealMore">
+                    @(_hintLevel == 0 ? "Hint 1" : _hintLevel == 1 ? "Hint 2" : "Show full solution")
+                </button>
+            }
+            @if (_hintLevel > 0 && !_done && _hintLevel < 2)
+            {
+                <button type="button" class="linkish" @onclick="() => Complete(true)">I got it — mark done</button>
+            }
+        </div>
+    }
+
+    @if (_feedback is not null)
+    {
+        <p class="feedback @(_done ? "ok" : "bad")">@_feedback</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Drill Drill { get; set; } = new();
+    [Parameter] public bool Completed { get; set; }
+    [Parameter] public EventCallback<bool> OnComplete { get; set; }
+
+    private int? _selected;
+    private int _hintLevel;
+    private bool _showSolution;
+    private string? _feedback;
+    private bool _done;
+    private bool _initialized;
+
+    protected override void OnParametersSet()
+    {
+        if (_initialized) return;
+        _done = Completed;
+        _showSolution = Completed;
+        _feedback = Completed ? "Already completed." : null;
+        _initialized = true;
+    }
+
+    private async Task Submit(int index)
+    {
+        if (_done || Drill.Kind != "multiple-choice") return;
+        _selected = index;
+        var correct = index == Drill.CorrectIndex;
+        _feedback = correct ? Drill.ExplainCorrect ?? "Correct." : Drill.ExplainWrong ?? "Try again.";
+        if (correct) await Complete(true);
+    }
+
+    private async Task RevealMore()
+    {
+        if (Drill.Hints is null) return;
+        if (_hintLevel < 2) _hintLevel++;
+        else
+        {
+            _showSolution = true;
+            if (!_done) await Complete(false);
+        }
+    }
+
+    private async Task Complete(bool correct)
+    {
+        _done = true;
+        await OnComplete.InvokeAsync(correct);
+    }
+}

@@ -1,0 +1,19 @@
+@using AptoP.Tutor.Models
+
+@if (Explainers.Count > 0)
+{
+    <div class="animated-explainers">
+        <p class="video-intro">
+            Short step-through explainers for the trickiest ideas — use these before or after the long
+            lecture videos.
+        </p>
+        @foreach (var exp in Explainers)
+        {
+            <ExplainerPlayer Explainer="exp" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public List<AnimatedExplainer> Explainers { get; set; } = [];
+}

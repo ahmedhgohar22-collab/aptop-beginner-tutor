@@ -1,0 +1,117 @@
+@using AptoP.Tutor.Models
+@inject UiState Ui
+
+<div class="study-guide">
+    <div class="chain-progress">
+        <div class="progress-bar">
+            <div class="fill" style="width:@Percent(DoneCount, Sections.Count)%"></div>
+        </div>
+        <span>@DoneCount/@Sections.Count guide sections</span>
+    </div>
+
+    <div class="quick-symbols">
+        @foreach (var s in QuickSymbols)
+        {
+            <button type="button" class="tap-symbol" @onclick="() => Ui.OpenGlossary(s)">@s</button>
+        }
+    </div>
+
+    @for (var i = 0; i < Visible.Count; i++)
+    {
+        var index = i;
+        var section = Visible[i];
+        var isDone = CompletedIds.Contains(section.Id);
+        var isFocus = index == _focus || (!isDone && index == UnlockedCount - 1);
+        <article class="guide-section @(isDone ? "done" : "") @(isFocus ? "focus" : "")">
+            <header>
+                <span class="card-index">Guide @(index + 1)/@Sections.Count</span>
+                <h3>@section.Title</h3>
+                @if (!string.IsNullOrWhiteSpace(section.SlidesRef))
+                {
+                    <p class="slides-ref">@section.SlidesRef</p>
+                }
+            </header>
+
+            @foreach (var p in section.Paragraphs)
+            {
+                <p>@p</p>
+            }
+
+            @if (section.Bullets is { Count: > 0 })
+            {
+                <ul class="guide-bullets">
+                    @foreach (var b in section.Bullets)
+                    {
+                        <li>@b</li>
+                    }
+                </ul>
+            }
+
+            @if (section.Formulas is { Count: > 0 })
+            {
+                <pre class="notation">@string.Join("\n", section.Formulas)</pre>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(section.Example))
+            {
+                <p class="example">@section.Example</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(section.Trap))
+            {
+                <div class="confused">
+                    <button type="button" class="linkish" @onclick="() => ToggleTrap(section.Id)">Trap?</button>
+                    @if (_openTrap.GetValueOrDefault(section.Id))
+                    {
+                        <p>@section.Trap</p>
+                    }
+                </div>
+            }
+
+            @if (!isDone)
+            {
+                <CheckGate Check="section.Check"
+                           OnPass="used => OnSectionPassLocal(section.Id, used, index)"
+                           OnFailTwice="() => OnFailTwice.InvokeAsync(section.Id)" />
+            }
+            else
+            {
+                <p class="feedback ok">Check passed.</p>
+            }
+        </article>
+    }
+</div>
+
+@code {
+    private static readonly string[] QuickSymbols = ["⊤", "⊥", "∧", "∨", "¬", "⇒", "⇐", ":", ",", "{}", "⟨⟩", "[]"];
+
+    [Parameter, EditorRequired] public List<GuideSection> Sections { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> CompletedIds { get; set; } = [];
+    [Parameter] public EventCallback<(string Id, bool UsedShowMe)> OnSectionPass { get; set; }
+    [Parameter] public EventCallback<string> OnFailTwice { get; set; }
+
+    private int _focus;
+    private readonly Dictionary<string, bool> _openTrap = new();
+    private bool _focusInit;
+
+    private int FirstIncomplete => Sections.FindIndex(s => !CompletedIds.Contains(s.Id));
+    private int UnlockedCount => FirstIncomplete == -1 ? Sections.Count : Math.Max(FirstIncomplete + 1, 1);
+    private List<GuideSection> Visible => Sections.Take(UnlockedCount).ToList();
+    private int DoneCount => Sections.Count(s => CompletedIds.Contains(s.Id));
+
+    protected override void OnParametersSet()
+    {
+        if (_focusInit || Sections.Count == 0) return;
+        _focus = FirstIncomplete == -1 ? Math.Max(Sections.Count - 1, 0) : FirstIncomplete;
+        _focusInit = true;
+    }
+
+    private static double Percent(int done, int total) => total == 0 ? 0 : 100.0 * done / total;
+    private void ToggleTrap(string id) => _openTrap[id] = !_openTrap.GetValueOrDefault(id);
+
+    private async Task OnSectionPassLocal(string id, bool usedShowMe, int index)
+    {
+        await OnSectionPass.InvokeAsync((id, usedShowMe));
+        _focus = Math.Min(index + 1, Sections.Count - 1);
+    }
+}

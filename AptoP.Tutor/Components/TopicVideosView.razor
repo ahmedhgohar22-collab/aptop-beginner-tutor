@@ -1,0 +1,42 @@
+@using AptoP.Tutor.Models
+
+@if (Videos.Count > 0)
+{
+    <div class="topic-videos">
+        <p class="video-intro">
+            Detailed explanatory videos from Eric Hehner’s free course
+            <em>Formal Methods of Software Design</em> (same book/theory). Watch in order, then use
+            transcript/visuals PDFs while you study.
+        </p>
+        @foreach (var v in Videos)
+        {
+            <article class="video-card">
+                <header>
+                    <h3>@v.Title</h3>
+                    <p class="video-meta">@v.Duration · @v.Topic</p>
+                </header>
+                <p>@v.WhyWatch</p>
+                <div class="video-frame">
+                    <video controls preload="metadata" src="@v.VideoUrl">
+                        <a href="@v.VideoUrl">Download / open video</a>
+                    </video>
+                </div>
+                <div class="video-links">
+                    <a href="@v.VideoUrl" target="_blank" rel="noreferrer">Open MP4</a>
+                    <a href="@v.TranscriptUrl" target="_blank" rel="noreferrer">Transcript PDF</a>
+                    <a href="@v.VisualsUrl" target="_blank" rel="noreferrer">Visuals PDF</a>
+                </div>
+            </article>
+        }
+        <p class="note">
+            Source:
+            <a href="https://www.cs.toronto.edu/~hehner/FMSD/" target="_blank" rel="noreferrer">
+                cs.toronto.edu/~hehner/FMSD
+            </a>. Videos stream from the university site (needs internet).
+        </p>
+    </div>
+}
+
+@code {
+    [Parameter] public List<TopicVideo> Videos { get; set; } = [];
+}

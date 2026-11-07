@@ -1,0 +1,38 @@
+﻿@inherits LayoutComponentBase
+@inject CourseService Course
+@inject UiState Ui
+@implements IDisposable
+
+<div class="app-shell">
+    <nav class="topbar">
+        <NavLink href="" class="brand">aPToP tutor</NavLink>
+        <div class="top-actions">
+            <button type="button" @onclick="() => Ui.OpenGlossary()">Glossary</button>
+        </div>
+    </nav>
+
+    <main>
+        @Body
+    </main>
+
+    <footer class="site-footer">
+        <p>@(_credit)</p>
+    </footer>
+
+    <GlossaryModal />
+    <WalkthroughModal />
+</div>
+
+@code {
+    private string _credit = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        _credit = Course.Pack.Meta.Credit;
+        Ui.Changed += OnUi;
+    }
+
+    private void OnUi() => InvokeAsync(StateHasChanged);
+    public void Dispose() => Ui.Changed -= OnUi;
+}

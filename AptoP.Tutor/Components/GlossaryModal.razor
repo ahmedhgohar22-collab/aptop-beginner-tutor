@@ -1,0 +1,70 @@
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject UiState Ui
+@implements IDisposable
+
+@if (Ui.GlossaryOpen)
+{
+    <div class="modal-backdrop" @onclick="Ui.CloseGlossary" role="presentation">
+        <div class="modal" role="dialog" aria-label="Symbol glossary" @onclick:stopPropagation="true">
+            <header class="modal-header">
+                <h2>Symbol glossary</h2>
+                <button type="button" class="icon-btn" @onclick="Ui.CloseGlossary">Close</button>
+            </header>
+            <input class="search"
+                   value="@_query"
+                   @oninput="OnQuery"
+                   placeholder="Search ⊤, ok, prime…"
+                   autofocus />
+            <ul class="glossary-list">
+                @foreach (var g in Filtered)
+                {
+                    <li>
+                        <span class="sym">@g.Symbol</span>
+                        <div>
+                            <strong>@g.Name</strong>
+                            <p>@g.Reading</p>
+                            @if (!string.IsNullOrWhiteSpace(g.Tip))
+                            {
+                                <p class="tip">@g.Tip</p>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@code {
+    private string _query = "";
+
+    protected override void OnInitialized()
+    {
+        Ui.Changed += OnUiChanged;
+        _query = Ui.GlossaryQuery;
+    }
+
+    private void OnUiChanged()
+    {
+        if (Ui.GlossaryOpen) _query = Ui.GlossaryQuery;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnQuery(ChangeEventArgs e) => _query = e.Value?.ToString() ?? "";
+
+    private IEnumerable<GlossaryEntry> Filtered
+    {
+        get
+        {
+            var needle = _query.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(needle)) return Course.Pack.Glossary;
+            return Course.Pack.Glossary.Where(g =>
+                g.Symbol.Contains(needle, StringComparison.OrdinalIgnoreCase) ||
+                g.Name.Contains(needle, StringComparison.OrdinalIgnoreCase) ||
+                g.Reading.Contains(needle, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    public void Dispose() => Ui.Changed -= OnUiChanged;
+}

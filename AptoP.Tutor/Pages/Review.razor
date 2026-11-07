@@ -1,0 +1,80 @@
+@page "/review"
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (!_ready)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <div class="page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <h1>Needs review</h1>
+        <p>Cards where you used Show me or failed twice.</p>
+        @if (Items.Count == 0)
+        {
+            <p class="feedback ok">Nothing queued — keep going.</p>
+        }
+        else
+        {
+            <ul class="miss-list">
+                @foreach (var item in Items)
+                {
+                    <li>
+                        <NavLink href="@item.Path">@item.LectureLabel — @item.Title</NavLink>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
+@code {
+    private bool _ready;
+    private record ReviewItem(string CardId, string Title, string Path, string LectureLabel);
+    private List<ReviewItem> Items { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed += OnChanged;
+        Rebuild();
+        _ready = true;
+    }
+
+    private void OnChanged()
+    {
+        Rebuild();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Rebuild()
+    {
+        var catalog = Course.Pack.Lectures
+            .Select(l => (Id: l.Id, Label: $"{l.Number}: {l.Title}", Path: $"lecture/{l.Id}"))
+            .Append((Id: "notation", Label: "Tools: Notation tools", Path: "notation"))
+            .ToList();
+
+        Items = Progress.State.NeedsReview.Select(cardId =>
+        {
+            foreach (var (id, label, path) in catalog)
+            {
+                var content = Course.GetContent(id);
+                if (content is null) continue;
+                var card = content.Cards.FirstOrDefault(c => c.Id == cardId);
+                if (card is not null)
+                    return new ReviewItem(cardId, card.Title, path, label);
+                var guide = content.Guides?.FirstOrDefault(g => g.Id == cardId);
+                if (guide is not null)
+                    return new ReviewItem(cardId, guide.Title, path, label);
+            }
+            return new ReviewItem(cardId, cardId, "", "Unknown");
+        }).ToList();
+    }
+
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

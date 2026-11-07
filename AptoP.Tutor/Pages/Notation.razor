@@ -1,0 +1,87 @@
+@page "/notation"
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (!_ready || _content is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    var cardsDone = _content.Cards.All(c => Progress.State.CompletedCards.Contains(c.Id));
+    var proofsDone = _content.Proofs.All(p => Progress.State.CompletedProofs.Contains(p.Id));
+    var videos = Course.Pack.VideosByLecture.GetValueOrDefault("notation") ?? [];
+
+    <div class="page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <header class="lecture-header">
+            <p class="eyebrow">Not a separate exam lecture · supports Three–Four</p>
+            <h1>Notation tools</h1>
+            <p>
+                Substitution and quantifiers from chapter 3, taught as beginner cards so specs with x′
+                and ∀ make sense.
+            </p>
+        </header>
+
+        <section>
+            <h2>1. Explanatory videos</h2>
+            <TopicVideosView Videos="videos" />
+        </section>
+
+        <section>
+            <h2>2. Practice cards</h2>
+            <CardChain Cards="_content.Cards"
+                       CompletedCards="Progress.State.CompletedCards"
+                       OnCardPass="PassCard"
+                       OnFailTwice="FailCard" />
+        </section>
+
+        @if (cardsDone)
+        {
+            <section>
+                <h2>3. Guided proofs</h2>
+                @foreach (var proof in _content.Proofs)
+                {
+                    <ProofStepper Proof="proof"
+                                  Completed="Progress.State.CompletedProofs.Contains(proof.Id)"
+                                  OnComplete="() => Progress.MarkProofCompleteAsync(proof.Id)" />
+                }
+            </section>
+        }
+
+        @if (cardsDone && proofsDone)
+        {
+            <section>
+                <h2>4. Drills</h2>
+                @foreach (var drill in _content.Drills)
+                {
+                    <DrillView Drill="drill"
+                               Completed="Progress.State.CompletedDrills.Contains(drill.Id)"
+                               OnComplete="_ => Progress.MarkDrillCompleteAsync(drill.Id)" />
+                }
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private bool _ready;
+    private LectureContent? _content;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed += OnChanged;
+        _content = Course.GetContent("notation");
+        _ready = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+    private async Task PassCard((string Id, bool UsedShowMe) args) =>
+        await Progress.MarkCardCompleteAsync(args.Id, args.UsedShowMe);
+    private async Task FailCard(string id) => await Progress.MarkNeedsReviewAsync(id);
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

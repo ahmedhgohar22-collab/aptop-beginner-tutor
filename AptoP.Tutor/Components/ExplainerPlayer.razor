@@ -1,0 +1,30 @@
+@using AptoP.Tutor.Models
+
+<article class="explainer-card">
+    <header>
+        <h3>@Explainer.Title</h3>
+        <p class="note">@Explainer.Summary</p>
+    </header>
+    <div class="explainer-stage">
+        <span class="card-index">Step @(_step + 1)/@Explainer.Steps.Count</span>
+        <h4>@Current.Title</h4>
+        <p>@Current.Body</p>
+        <pre class="notation explainer-visual">@Current.Visual</pre>
+        <div class="explainer-controls">
+            <button type="button" class="ghost" disabled="@(_step == 0)" @onclick="Back">Back</button>
+            <button type="button" class="primary" @onclick="Next">
+                @(_step >= Explainer.Steps.Count - 1 ? "Restart" : "Next")
+            </button>
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public AnimatedExplainer Explainer { get; set; } = new();
+    private int _step;
+    private ExplainerStep Current => Explainer.Steps[_step];
+
+    private void Back() => _step = Math.Max(0, _step - 1);
+    private void Next() =>
+        _step = _step >= Explainer.Steps.Count - 1 ? 0 : _step + 1;
+}

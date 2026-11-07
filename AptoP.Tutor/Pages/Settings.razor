@@ -1,0 +1,68 @@
+@page "/settings"
+@inject ProgressService Progress
+@inject IJSRuntime Js
+@implements IDisposable
+
+@if (!_ready)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <div class="page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <h1>Settings</h1>
+
+        <label class="toggle-row">
+            <InputCheckbox @bind-Value="_includeFiveSix" @bind-Value:after="PersistFiveSix" />
+            <span>
+                Include lectures Five–Six in midterm practice
+                <small>Default is One–Four only (timetable parenthetical).</small>
+            </span>
+        </label>
+
+        <div class="settings-actions">
+            <button type="button" class="primary" @onclick="Progress.ResetWalkthroughAsync">
+                Replay walkthrough
+            </button>
+            <button type="button" class="danger" @onclick="Reset">
+                Reset progress
+            </button>
+        </div>
+
+        @if (Progress.State.MidtermScore is int score)
+        {
+            <p>Last midterm practice score saved: <strong>@score%</strong></p>
+        }
+    </div>
+}
+
+@code {
+    private bool _ready;
+    private bool _includeFiveSix;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Progress.EnsureLoadedAsync();
+        _includeFiveSix = Progress.State.IncludeFiveSixInMidterm;
+        Progress.Changed += OnChanged;
+        _ready = true;
+    }
+
+    private void OnChanged()
+    {
+        _includeFiveSix = Progress.State.IncludeFiveSixInMidterm;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task PersistFiveSix() =>
+        await Progress.SetMidtermIncludeAsync(_includeFiveSix);
+
+    private async Task Reset()
+    {
+        var ok = await Js.InvokeAsync<bool>("confirm", "Reset all local progress?");
+        if (ok) await Progress.ResetAllAsync();
+    }
+
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

@@ -1,0 +1,108 @@
+@using AptoP.Tutor.Models
+@inject UiState Ui
+
+<div class="card-chain">
+    <div class="chain-progress">
+        <div class="progress-bar">
+            <div class="fill" style="width:@Percent(DoneCount, Cards.Count)%"></div>
+        </div>
+        <span>@DoneCount/@Cards.Count cards</span>
+    </div>
+
+    <div class="quick-symbols">
+        @foreach (var s in QuickSymbols)
+        {
+            <button type="button" class="tap-symbol" @onclick="() => Ui.OpenGlossary(s)">@s</button>
+        }
+    </div>
+
+    @for (var i = 0; i < Visible.Count; i++)
+    {
+        var index = i;
+        var card = Visible[i];
+        var isDone = CompletedCards.Contains(card.Id);
+        var isFocus = index == _focus || (!isDone && index == UnlockedCount - 1);
+        <article class="micro-card @(isDone ? "done" : "") @(isFocus ? "focus" : "")">
+            <header>
+                <span class="card-index">Card @(index + 1)/@Cards.Count</span>
+                <h3>@card.Title</h3>
+            </header>
+            <p>@card.Plain</p>
+            @if (!string.IsNullOrWhiteSpace(card.Example))
+            {
+                <p class="example">@card.Example</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(card.Notation))
+            {
+                <pre class="notation">
+@card.Notation
+@if (!string.IsNullOrWhiteSpace(card.ReadAloud))
+{
+    <span class="read-aloud">Read: @card.ReadAloud</span>
+}
+                </pre>
+            }
+            @if (!string.IsNullOrWhiteSpace(card.Confused))
+            {
+                <div class="confused">
+                    <button type="button" class="linkish" @onclick="() => ToggleConfused(card.Id)">Confused?</button>
+                    @if (_confused.GetValueOrDefault(card.Id))
+                    {
+                        <p>@card.Confused</p>
+                    }
+                </div>
+            }
+            @if (!isDone)
+            {
+                <CheckGate Check="card.Check"
+                           OnPass="used => OnCardPassLocal(card.Id, used, index)"
+                           OnFailTwice="() => OnFailTwice.InvokeAsync(card.Id)" />
+            }
+            else
+            {
+                <p class="feedback ok">Check passed.</p>
+            }
+        </article>
+    }
+
+    @if (DoneCount < Cards.Count)
+    {
+        <p class="locked-note">Next cards unlock after you pass the current check (or use Show me).</p>
+    }
+</div>
+
+@code {
+    private static readonly string[] QuickSymbols = ["⊤", "⊥", "∧", "∨", "¬", "⇒", "⇐", "x′", "ok", "."];
+
+    [Parameter, EditorRequired] public List<Card> Cards { get; set; } = [];
+    [Parameter] public IReadOnlyList<string> CompletedCards { get; set; } = [];
+    [Parameter] public EventCallback<(string Id, bool UsedShowMe)> OnCardPass { get; set; }
+    [Parameter] public EventCallback<string> OnFailTwice { get; set; }
+
+    private int _focus;
+    private readonly Dictionary<string, bool> _confused = new();
+    private bool _focusInit;
+
+    private int FirstIncomplete => Cards.FindIndex(c => !CompletedCards.Contains(c.Id));
+    private int UnlockedCount => FirstIncomplete == -1 ? Cards.Count : Math.Max(FirstIncomplete + 1, 1);
+    private List<Card> Visible => Cards.Take(UnlockedCount).ToList();
+    private int DoneCount => Cards.Count(c => CompletedCards.Contains(c.Id));
+
+    protected override void OnParametersSet()
+    {
+        if (_focusInit || Cards.Count == 0) return;
+        _focus = FirstIncomplete == -1 ? Math.Max(Cards.Count - 1, 0) : FirstIncomplete;
+        _focusInit = true;
+    }
+
+    private static double Percent(int done, int total) => total == 0 ? 0 : 100.0 * done / total;
+
+    private void ToggleConfused(string id) =>
+        _confused[id] = !_confused.GetValueOrDefault(id);
+
+    private async Task OnCardPassLocal(string id, bool usedShowMe, int index)
+    {
+        await OnCardPass.InvokeAsync((id, usedShowMe));
+        _focus = Math.Min(index + 1, Cards.Count - 1);
+    }
+}

@@ -1,0 +1,116 @@
+@using AptoP.Tutor.Models
+
+<div class="proof-stepper">
+    <h3>@Proof.Title</h3>
+    <p class="claim"><strong>Claim:</strong> <code>@Proof.Claim</code></p>
+    <p class="read-aloud">@Proof.ClaimReading</p>
+
+    <div class="proof-lines">
+        <div class="proof-line start"><code>@Proof.Claim</code></div>
+        @for (var i = 0; i < Proof.Steps.Count; i++)
+        {
+            if (!_revealed.Contains(i)) continue;
+            var step = Proof.Steps[i];
+            <div class="proof-line">
+                <span class="connector">@step.Connector</span>
+                <code>@step.Expression</code>
+                <span class="law-hint">@step.Law</span>
+            </div>
+        }
+    </div>
+
+    @if (!_done && Current is not null)
+    {
+        <div class="step-controls">
+            <p>Choose the next connector and law:</p>
+            <div class="connector-row">
+                @foreach (var c in Connectors)
+                {
+                    <button type="button"
+                            class="@(_connectorPick == c ? "selected" : "")"
+                            @onclick="() => _connectorPick = c">
+                        @c
+                    </button>
+                }
+            </div>
+            <div class="law-row">
+                @foreach (var law in Current.LawChoices)
+                {
+                    <button type="button"
+                            class="@(_lawPick == law ? "selected" : "")"
+                            @onclick="() => _lawPick = law">
+                        @law
+                    </button>
+                }
+            </div>
+            <button type="button" class="primary" @onclick="TryAdvance">Add line</button>
+            @if (_error is not null)
+            {
+                <p class="feedback bad">@_error</p>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Proof Proof { get; set; } = new();
+    [Parameter] public bool Completed { get; set; }
+    [Parameter] public EventCallback OnComplete { get; set; }
+
+    private int _stepIndex;
+    private string? _connectorPick;
+    private string? _lawPick;
+    private string? _error;
+    private HashSet<int> _revealed = [];
+    private bool _initialized;
+
+    private ProofStep? Current => _stepIndex < Proof.Steps.Count ? Proof.Steps[_stepIndex] : null;
+    private bool _done => _stepIndex >= Proof.Steps.Count;
+    private List<string> Connectors => Current?.ConnectorChoices ?? ["=", "⇒", "⇐"];
+
+    protected override void OnParametersSet()
+    {
+        if (_initialized) return;
+        if (Completed)
+        {
+            _stepIndex = Proof.Steps.Count;
+            _revealed = Enumerable.Range(0, Proof.Steps.Count).ToHashSet();
+        }
+        _initialized = true;
+    }
+
+    private async Task TryAdvance()
+    {
+        if (Current is null || _done) return;
+        if (_connectorPick is null || _lawPick is null)
+        {
+            _error = "Pick both the connector and the law.";
+            return;
+        }
+        if (!Connectors.Contains(_connectorPick))
+        {
+            _error = "That connector is not offered for this step.";
+            return;
+        }
+        if (_connectorPick != Current.Connector)
+        {
+            _error = Current.WrongReasons?.GetValueOrDefault(_connectorPick)
+                     ?? $"Need connector {Current.Connector} here, not {_connectorPick}.";
+            return;
+        }
+        if (_lawPick != Current.Law)
+        {
+            _error = Current.WrongReasons?.GetValueOrDefault(_lawPick)
+                     ?? $"Not “{_lawPick}”. Look for the law that justifies this rewrite.";
+            return;
+        }
+
+        _error = null;
+        _revealed.Add(_stepIndex);
+        _connectorPick = null;
+        _lawPick = null;
+        _stepIndex++;
+        if (_stepIndex >= Proof.Steps.Count)
+            await OnComplete.InvokeAsync();
+    }
+}

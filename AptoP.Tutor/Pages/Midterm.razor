@@ -1,0 +1,127 @@
+@page "/midterm"
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (!_ready)
+{
+    <p>Loading…</p>
+}
+else if (_finished)
+{
+    <div class="page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <h1>Midterm practice result</h1>
+        <p class="score">Score: <strong>@_finalScore%</strong> (@_correctCount/@_total)</p>
+        <p>
+            Scope: lectures One–Four
+            @(Progress.State.IncludeFiveSixInMidterm ? " + Five–Six (Settings)" : "").
+        </p>
+        @if (_misses.Count == 0)
+        {
+            <p class="feedback ok">No misses — nice.</p>
+        }
+        else
+        {
+            <div>
+                <h2>Review these</h2>
+                <ul class="miss-list">
+                    @foreach (var id in _misses)
+                    {
+                        var lec = Course.Pack.MidtermReviewLink.GetValueOrDefault(id, "one");
+                        <li>
+                            <NavLink href="@($"lecture/{lec}")">@id → lecture @lec</NavLink>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+        <button type="button" class="primary" @onclick="Restart">Try again</button>
+    </div>
+}
+else
+{
+    <div class="page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <h1>Midterm practice</h1>
+        <p class="note">Question @(_index + 1) / @_total</p>
+        @if (_current is not null)
+        {
+            <DrillView @key="_current.Id"
+                       Drill="_current"
+                       Completed="false"
+                       OnComplete="HandleComplete" />
+        }
+    </div>
+}
+
+@code {
+    private bool _ready;
+    private List<Drill> _items = [];
+    private int _index;
+    private int _correctCount;
+    private List<string> _misses = [];
+    private bool _finished;
+    private int? _finalScore;
+    private int _total;
+    private Drill? _current;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed += OnChanged;
+        BuildItems();
+        _ready = true;
+    }
+
+    private void OnChanged()
+    {
+        if (!_finished)
+        {
+            BuildItems();
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void BuildItems()
+    {
+        _items = Progress.State.IncludeFiveSixInMidterm
+            ? [.. Course.Pack.MidtermDrills, .. Course.Pack.MidtermExtraFiveSix]
+            : [.. Course.Pack.MidtermDrills];
+        _total = _items.Count;
+        _current = _items.ElementAtOrDefault(_index);
+    }
+
+    private async Task HandleComplete(bool correct)
+    {
+        if (_current is null) return;
+        if (correct) _correctCount++;
+        else _misses.Add(_current.Id);
+
+        if (_index + 1 >= _total)
+        {
+            _finalScore = (int)Math.Round(100.0 * _correctCount / Math.Max(_total, 1));
+            _finished = true;
+            await Progress.SaveMidtermResultAsync(_finalScore.Value, _misses);
+        }
+        else
+        {
+            _index++;
+            _current = _items[_index];
+        }
+    }
+
+    private void Restart()
+    {
+        _index = 0;
+        _correctCount = 0;
+        _misses = [];
+        _finished = false;
+        _finalScore = null;
+        BuildItems();
+    }
+
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

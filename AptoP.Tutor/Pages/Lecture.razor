@@ -1,0 +1,161 @@
+@page "/lecture/{Id}"
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (!_ready)
+{
+    <p>Loading…</p>
+}
+else if (_meta is null || _content is null)
+{
+    <div class="page">
+        <p>Lecture not found.</p>
+        <NavLink href="">Back</NavLink>
+    </div>
+}
+else
+{
+    var section = 1;
+    var guides = _content.Guides ?? [];
+    var guidesDone = guides.Count == 0 || guides.All(g => Progress.State.CompletedCards.Contains(g.Id));
+    var cardsDone = _content.Cards.All(c => Progress.State.CompletedCards.Contains(c.Id));
+    var proofsDone = _content.Proofs.Count == 0 || _content.Proofs.All(p => Progress.State.CompletedProofs.Contains(p.Id));
+    var canFinish = guidesDone && cardsDone && proofsDone;
+    var videos = Course.Pack.VideosByLecture.GetValueOrDefault(Id) ?? [];
+    var explainers = Course.Pack.ExplainersByLecture.GetValueOrDefault(Id) ?? [];
+    var printables = Course.Pack.PrintablesByLecture.GetValueOrDefault(Id) ?? [];
+
+    <div class="page lecture-page">
+        <NavLink href="" class="back">← Timetable</NavLink>
+        <header class="lecture-header">
+            <p class="eyebrow">
+                @_meta.DateLabel · @_meta.Sections
+                @(_meta.Midterm ? " · Midterm set" : "")
+            </p>
+            <h1>@_meta.Number: @_meta.Title</h1>
+            @if (!string.IsNullOrWhiteSpace(_meta.Note))
+            {
+                <p class="note">@_meta.Note</p>
+            }
+            <p class="note">
+                Watch the topic videos first, use the step explainers for hard ideas, then the study guide
+                and drills.
+            </p>
+        </header>
+
+        @if (printables.Count > 0)
+        {
+            <section>
+                <h2>@(section++). Printable slides (B&W, paper-saving)</h2>
+                <PrintableDownloadsView Files="printables" />
+            </section>
+        }
+
+        @if (videos.Count > 0)
+        {
+            <section>
+                <h2>@(section++). Explanatory videos</h2>
+                <TopicVideosView Videos="videos" />
+            </section>
+        }
+
+        @if (explainers.Count > 0)
+        {
+            <section>
+                <h2>@(section++). Step-through explainers</h2>
+                <AnimatedExplainersView Explainers="explainers" />
+            </section>
+        }
+
+        @if (guides.Count > 0)
+        {
+            <section>
+                <h2>@(section++). Detailed study guide</h2>
+                <StudyGuideView Sections="guides"
+                                CompletedIds="Progress.State.CompletedCards"
+                                OnSectionPass="PassCard"
+                                OnFailTwice="FailCard" />
+            </section>
+        }
+
+        @if (guidesDone)
+        {
+            <section>
+                <h2>@(section++). Quick practice cards</h2>
+                <CardChain Cards="_content.Cards"
+                           CompletedCards="Progress.State.CompletedCards"
+                           OnCardPass="PassCard"
+                           OnFailTwice="FailCard" />
+            </section>
+        }
+
+        @if (guidesDone && cardsDone)
+        {
+            <section>
+                <h2>@(section++). Guided proofs</h2>
+                @foreach (var proof in _content.Proofs)
+                {
+                    <ProofStepper Proof="proof"
+                                  Completed="Progress.State.CompletedProofs.Contains(proof.Id)"
+                                  OnComplete="() => Progress.MarkProofCompleteAsync(proof.Id)" />
+                }
+                @if (_content.Proofs.Count == 0)
+                {
+                    <p class="note">No guided proofs in this lecture.</p>
+                }
+            </section>
+
+            <section>
+                <h2>@(section++). Drills</h2>
+                @foreach (var drill in _content.Drills)
+                {
+                    <DrillView Drill="drill"
+                               Completed="Progress.State.CompletedDrills.Contains(drill.Id)"
+                               OnComplete="_ => Progress.MarkDrillCompleteAsync(drill.Id)" />
+                }
+            </section>
+        }
+
+        @if (canFinish && !Progress.State.LectureDone.Contains(Id))
+        {
+            <button type="button" class="primary" @onclick="() => Progress.MarkLectureDoneAsync(Id)">
+                Mark lecture done
+            </button>
+        }
+        else if (Progress.State.LectureDone.Contains(Id))
+        {
+            <p class="feedback ok">Lecture marked done.</p>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+
+    private bool _ready;
+    private CourseLecture? _meta;
+    private LectureContent? _content;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed -= OnChanged;
+        Progress.Changed += OnChanged;
+        _meta = Course.GetLecture(Id);
+        _content = Course.GetContent(Id);
+        _ready = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task PassCard((string Id, bool UsedShowMe) args) =>
+        await Progress.MarkCardCompleteAsync(args.Id, args.UsedShowMe);
+
+    private async Task FailCard(string id) =>
+        await Progress.MarkNeedsReviewAsync(id);
+
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

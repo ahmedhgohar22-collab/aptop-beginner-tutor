@@ -1,0 +1,105 @@
+﻿@page "/"
+@using AptoP.Tutor.Models
+@inject CourseService Course
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (!_ready)
+{
+    <p>Loading tutor…</p>
+}
+else
+{
+    <div class="lecture-map">
+        <header class="hero-panel">
+            <p class="eyebrow">Beginner interactive tutor</p>
+            <h1>@Course.Pack.Meta.Book</h1>
+            <p class="sub">
+                @Course.Pack.Meta.Edition edition · follow your lecture timetable · learn by doing
+            </p>
+            <div class="countdowns">
+                <div>
+                    <span class="label">Midterm 22/11</span>
+                    <strong>@CourseService.DaysLabel(CourseService.DaysUntil(Course.Pack.Meta.MidtermDate))</strong>
+                </div>
+                <div>
+                    <span class="label">Review 3/1</span>
+                    <strong>@CourseService.DaysLabel(CourseService.DaysUntil(Course.Pack.Meta.ReviewDate))</strong>
+                </div>
+            </div>
+            <div class="hero-actions">
+                <NavLink class="primary link-btn" href="midterm">Midterm practice</NavLink>
+                <NavLink class="link-btn ghost" href="notation">Notation tools</NavLink>
+                <NavLink class="link-btn ghost" href="review">Needs review</NavLink>
+                <NavLink class="link-btn ghost" href="settings">Settings</NavLink>
+            </div>
+        </header>
+
+        <ul class="timetable">
+            @foreach (var lec in Course.Pack.Lectures)
+            {
+                var content = Course.GetContent(lec.Id);
+                var guideTotal = content?.Guides?.Count ?? 0;
+                var cardTotal = content?.Cards.Count ?? 0;
+                var total = guideTotal + cardTotal;
+                var done = CountDone(content);
+                var videoCount = Course.Pack.VideosByLecture.GetValueOrDefault(lec.Id)?.Count ?? 0;
+                var finished = Progress.State.LectureDone.Contains(lec.Id);
+                <li>
+                    <NavLink href="@($"lecture/{lec.Id}")" class="timetable-row">
+                        <div class="date">@lec.DateLabel</div>
+                        <div class="meta">
+                            <div class="title-row">
+                                <strong>@lec.Number: @lec.Title</strong>
+                                @if (lec.Midterm)
+                                {
+                                    <span class="badge midterm">Midterm</span>
+                                }
+                                @if (videoCount > 0)
+                                {
+                                    <span class="badge">@videoCount videos</span>
+                                }
+                                @if (finished)
+                                {
+                                    <span class="badge done">Done</span>
+                                }
+                            </div>
+                            <span class="sections">@lec.Sections</span>
+                            @if (!string.IsNullOrWhiteSpace(lec.Note))
+                            {
+                                <span class="note">@lec.Note</span>
+                            }
+                            <div class="progress-bar">
+                                <div class="fill" style="width:@(total == 0 ? 0 : 100.0 * done / total)%"></div>
+                            </div>
+                            <span class="progress-label">@done/@total guide+cards</span>
+                        </div>
+                    </NavLink>
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Course.EnsureLoadedAsync();
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed += OnChanged;
+        _ready = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+
+    private int CountDone(LectureContent? content)
+    {
+        if (content is null) return 0;
+        var ids = (content.Guides ?? []).Select(g => g.Id).Concat(content.Cards.Select(c => c.Id));
+        return ids.Count(id => Progress.State.CompletedCards.Contains(id));
+    }
+
+    public void Dispose() => Progress.Changed -= OnChanged;
+}

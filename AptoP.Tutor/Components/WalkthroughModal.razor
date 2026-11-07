@@ -1,0 +1,44 @@
+@inject ProgressService Progress
+@implements IDisposable
+
+@if (_ready && !Progress.State.WalkthroughDone)
+{
+    <div class="modal-backdrop">
+        <div class="modal walkthrough" role="dialog" aria-label="Walkthrough">
+            <h2>How this tutor works</h2>
+            <ol>
+                @foreach (var s in Steps)
+                {
+                    <li>
+                        <strong>@s.Title</strong>
+                        <p>@s.Body</p>
+                    </li>
+                }
+            </ol>
+            <button type="button" class="primary" @onclick="Done">Start learning</button>
+        </div>
+    </div>
+}
+
+@code {
+    private static readonly (string Title, string Body)[] Steps =
+    [
+        ("Welcome", "This tutor teaches a Practical Theory of Programming in tiny cards. One idea, then a quick check — then the next card unlocks."),
+        ("Checks gate progress", "You must try the check. “Show me” reveals the answer but marks the card for review. Fail twice also adds it to Needs review."),
+        ("Tap any symbol", "Open the glossary anytime for ⊤ ⊥ ∧ ∨ ⇒ x′ ok and friends — plain English readings."),
+        ("Proofs step by step", "Before each proof line appears, pick the connector (=, ⇒, or ⇐) and the law name. Wrong picks explain why."),
+    ];
+
+    private bool _ready;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Progress.EnsureLoadedAsync();
+        Progress.Changed += OnChanged;
+        _ready = true;
+    }
+
+    private void OnChanged() => InvokeAsync(StateHasChanged);
+    private async Task Done() => await Progress.SetWalkthroughDoneAsync();
+    public void Dispose() => Progress.Changed -= OnChanged;
+}
