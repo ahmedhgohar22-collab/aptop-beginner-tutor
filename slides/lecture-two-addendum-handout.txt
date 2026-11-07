@@ -1,0 +1,76 @@
+===== SLIDE 1 — Addendum to Number Theory =====
+Addendum to Number Theory
+
+===== SLIDE 2 =====
+Natural Numbers Natural numbers count the elements of a whole, cardinal number, or express the order which occupies an element in a whole, ordinal number.
+• The set of the natural numbers is formed by:
+nat = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9,...}
+• 6 / 2 ∈ nat
+• 2 / 6 ∉ nat
+• We may use powers, since it is the abbreviated form of writing a product formed by several equal factors.
+• The root of natural numbers is not always a natural number. This only occurs when the root is exact.
+
+===== SLIDE 3 — Integers Integers are of the type: =====
+Integers Integers are of the type:
+int = {...−5, −4, −3, −2, −1, 0, 1, 2, 3, 4, 5...}
+• We can operate with powers, but the exponent has to be a natural number.
+The root of an integer is not always another integer.
+This only occurs when the root is exact, of even index and positive radicand.
+
+===== SLIDE 4 — Rational Numbers =====
+Rational Numbers
+• Arational number is the quotient of two integers with a nonzero denominator. rat 𝑎
+rat= 𝑎, 𝑏 ∈ 𝑖𝑛𝑡, 𝑏 ≠ 0 𝑏
+• Non -recurrent decimal numbers are not rational numbers, but
+• exact, repeating decimal numbers are.
+Example: 22/7= 3.142857 142857 142857
+
+===== SLIDE 5 — Rational Numbers =====
+Rational Numbers
+• The sum, difference, product and quotient of two rational numbers is another rational number.
+• With rational numbers, we can operate with powers, but the exponent must be an integer.
+• The root of a rational number is not always another rational number. This only happens when the root is exact, the index is even and the radicand is positive.
+− ∉ 𝑟𝑎𝑡
+
+===== SLIDE 6 — Irrational numbers =====
+Irrational numbers
+• Anumber is irrational if there are infinite, non-recurrent decimal places, therefore, it cannot be expressed in the form of fraction.
+• The best known irrational number is
+π, which is defined as the relationship between the perimeter of a circle and its diameter.
+π = 3.141592653589...
+• Other irrational number is The number, e, which appears in growth processes, in radioactive decay and ….
+e = 2.718281828459...
+• The golden ratio, a geometric proportion used by artists from all periods 1 + 5 𝜑 = = 1.61803398874989…
+
+===== SLIDE 7 — Real Numbers =====
+Real Numbers
+• The set formed by rational and irrational numbers is the set of real numbers denoted by Real
+• All operations can be performed with real numbers with the exception:
+• The root of an even index and negative radicand, and
+• Division by zero.
+
+===== SLIDE 8 — irrational real rat int nat =====
+irrational real rat int nat
+
+===== SLIDE 9 — The Real Line =====
+The Real Line
+• For every real number there is a point on a straight line and for every point on the straight line, a real number.
+
+===== SLIDE 10 =====
+Imaginary Numbers An imaginary number is denoted by bi, where:
+• b is a real number.
+• i is the imaginary unit:
+• With imaginary numbers, roots with an even index and negative roots can be calculated:
+x + 9 = 0
+
+===== SLIDE 11 — Complex Numbers =====
+Complex Numbers
+• Acomplex number is a binomial a + bi.
+• a is the real part of the complex number.
+• b is the imaginary part of the complex number.
+• If b = 0, the complex number is reduced to a real number as a + 0 x i = a.
+• If a = 0, the complex number is reduced to bi, and it is said that it is a pure imaginary number.
+• The set of all complex numbers is denoted by C 𝐶 = 𝑎 + 𝑏𝑖 𝑎, 𝑏: 𝑟𝑒𝑎𝑙
+
+===== SLIDE 12 =====
+• The Number Theory - Back to Lecture 2
