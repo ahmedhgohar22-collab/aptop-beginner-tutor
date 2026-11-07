@@ -1,8 +1,0 @@
-E:\AI\General\AptoP.Tutor\publish-gh\publish\web.config
-E:\AI\General\AptoP.Tutor\publish-gh\publish\wwwroot\web.config
-E:\AI\General\AptoP.Tutor\publish-gh\publish\AptoP.Tutor.staticwebassets.endpoints.json
-E:\AI\General\AptoP.Tutor\publish-gh\publish\emcc-props.json
-E:\AI\General\AptoP.Tutor\publish-gh\publish\wwwroot\data\course-pack.json
-E:\AI\General\AptoP.Tutor\publish-gh\publish\wwwroot\_framework\blazor.boot.json
-E:\AI\General\AptoP.Tutor\publish-gh\emcc-props.json
-E:\AI\General\AptoP.Tutor\publish-gh\web.config

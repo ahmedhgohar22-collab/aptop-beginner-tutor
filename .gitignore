@@ -25,3 +25,10 @@ tools/gs-setup.exe
 *.njsproj
 *.sln
 *.sw?
+AptoP.Tutor/bin/
+AptoP.Tutor/obj/
+AptoP.Tutor/publish/
+AptoP.Tutor/publish-gh/
+_gh_pages_push/
+gh-pages-out/
+pdf_work/
